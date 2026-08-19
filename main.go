@@ -8,16 +8,15 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"syscall"
 
-	"github.com/gotd/td/session"
-	"github.com/gotd/td/telegram"
-	"github.com/gotd/td/telegram/dcs"
+	"github.com/gotd/td/server"
 	"github.com/gotd/td/tg"
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -26,25 +25,25 @@ func main() {
 
 	dispatcher := tg.NewUpdateDispatcher()
 
-	server := telegram.NewServer(key, dispatcher, telegram.ServerOptions{
-		Storage: session.StorageMemory(),
+	srv := server.New(key, server.Options{
+		Handler: dispatcher,
 	})
 
 	listener, err := net.Listen("tcp", "0.0.0.0:443")
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to listen on :443: %v", err)
 	}
 	defer listener.Close()
 
-	log.Println("Telegram server listening on :443")
+	log.Println("Telegram MTProto Server successfully started on :443")
 
 	go func() {
-		if err := server.Serve(ctx, dcs.Split(listener)); err != nil {
-			log.Printf("server error: %v", err)
+		if err := srv.Serve(ctx, server.NetListener(listener)); err != nil {
+			log.Printf("server stopped with error: %v", err)
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("Shutting down...")
+	log.Println("Shutting down server gracefully...")
 }
 
