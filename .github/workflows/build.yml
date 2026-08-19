@@ -1,4 +1,4 @@
-name: Build Custom Telegram APK
+name: Build Shinygram APK
 
 on:
   workflow_dispatch:
@@ -21,23 +21,30 @@ jobs:
       - name: Set up Android SDK & NDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android NDK
+      - name: Install Android NDK & CMake
         run: |
           sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
 
-      - name: Clone Nekogram Source
+      - name: Clone Open Telegram Source
         run: |
-          git clone --depth 1 https://github.com/Neko-X/Nekogram.git client
+          git clone --depth 1 https://gitlab.com/Neko-X/Nekogram.git client || git clone --depth 1 https://github.com/Telegram-FOSS-Team/Telegram-FOSS.git client
 
-      - name: Build APK with Gradle
+      - name: Rename App to Shinygram
+        run: |
+          cd client
+          # Меняем имя приложения в строковых ресурсах Android на Shinygram
+          find . -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
+          find . -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
+
+      - name: Build Shinygram APK
         run: |
           cd client
           chmod +x gradlew
-          ./gradlew assembleAfatDebug --no-daemon -x lint -x test
+          ./gradlew assembleDebug --no-daemon -x lint -x test
 
-      - name: Upload APK
+      - name: Upload Shinygram APK
         uses: actions/upload-artifact@v4
         with:
-          name: Shinygram
-          path: client/TMessagesProj/build/outputs/apk/**/*.apk
+          name: Shinygram-App
+          path: client/**/build/outputs/apk/**/*.apk
           
