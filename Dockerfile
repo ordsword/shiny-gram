@@ -4,9 +4,9 @@ RUN apk add --no-cache git build-base
 
 WORKDIR /src
 RUN git clone --depth 1 https://github.com/gotd/td.git .
-WORKDIR /src/example/server
 
-RUN go build -o /app/tgserver .
+# Собираем официальный бинарник Telegram-сервера из cmd/gotd-server
+RUN go build -o /app/tgserver ./cmd/gotd-server
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
@@ -16,4 +16,4 @@ COPY --from=builder /app/tgserver .
 
 EXPOSE 443
 
-CMD ["./tgserver"]
+CMD ["./tgserver", "-addr", "0.0.0.0:443"]
