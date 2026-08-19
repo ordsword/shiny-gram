@@ -4,12 +4,12 @@ RUN apk add --no-cache git build-base
 
 WORKDIR /app
 
-COPY go.mod ./
-RUN go mod download || true
-
 COPY main.go ./
-RUN go mod tidy
-RUN go build -o tgserver main.go
+
+# Создаем модуль и автоматически скачиваем актуальные зависимости
+RUN go mod init shiny-gram && \
+    go get github.com/gotd/td@v0.100.0 && \
+    go build -o tgserver main.go
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
