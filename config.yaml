@@ -1,7 +1,7 @@
+
 server:
-  listen: "0.0.0.0:443"
-  public_key: ""
-db:
-  driver: "sqlite3"
-  source: "telegram.db"
+  addr: "0.0.0.0:443"
+database:
+  type: "sqlite"
+  dsn: "shiny.db"
   
