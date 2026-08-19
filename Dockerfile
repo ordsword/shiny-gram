@@ -4,16 +4,19 @@ RUN apk add --no-cache git build-base
 
 WORKDIR /app
 
-# Скачиваем и собираем готовый тестовый Telegram-сервер напрямую из официального пакета gotd
-RUN go install -v github.com/gotd/td/example/server@latest
+COPY go.mod ./
+RUN go mod download || true
+
+COPY main.go ./
+RUN go mod tidy
+RUN go build -o tgserver main.go
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
 WORKDIR /root/
 
-# Забираем скомпилированный бинарник
-COPY --from=builder /go/bin/server /root/tgserver
+COPY --from=builder /app/tgserver .
 
 EXPOSE 443
 
-CMD ["/root/tgserver", "-addr", "0.0.0.0:443"]
+CMD ["./tgserver"]
