@@ -12,42 +12,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 11
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Android SDK & NDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android NDK
+      - name: Clone Telegram Lite Source
         run: |
-          sdkmanager --install "ndk;21.4.7075529" "cmake;3.10.2.4988404"
+          git clone --depth 1 https://github.com/DrKLO/Telegram.git client
 
-      - name: Clone Clean Telegram Source
-        run: |
-          git clone --depth 1 https://github.com/Telegram-FOSS-Team/Telegram-FOSS.git client
-
-      - name: Configure and Rename to Shinygram
+      - name: Configure App Name to Shinygram
         run: |
           cd client
-          # Убираем устаревший параметр памяти, ломающий сборку
-          sed -i 's/-XX:MaxPermSize=[^ ]*//g' gradle.properties || true
+          # Увеличиваем лимиты памяти Gradle
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" > gradle.properties
+          echo "android.useAndroidX=true" >> gradle.properties
           
-          # Задаем название приложения Shinygram
-          find . -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
-          find . -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
+          # Меняем имя приложения на Shinygram
+          find TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
+          find TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           cd client
           chmod +x gradlew
-          ./gradlew assembleAfatDebug --no-daemon -x lint -x test
+          ./gradlew assembleAfatDebug --no-daemon -x test -x lint
 
-      - name: Upload Shinygram APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Shinygram-Clean-APK
+          name: Shinygram-App
           path: client/TMessagesProj/build/outputs/apk/**/*.apk
           
