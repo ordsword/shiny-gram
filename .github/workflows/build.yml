@@ -12,39 +12,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Java 11
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '11'
           distribution: 'temurin'
 
       - name: Set up Android SDK & NDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android NDK & CMake
+      - name: Install Android NDK
         run: |
-          sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
+          sdkmanager --install "ndk;21.4.7075529" "cmake;3.10.2.4988404"
 
-      - name: Clone Open Telegram Source
+      - name: Clone Clean Telegram Source
         run: |
-          git clone --depth 1 https://gitlab.com/Neko-X/Nekogram.git client || git clone --depth 1 https://github.com/Telegram-FOSS-Team/Telegram-FOSS.git client
+          git clone --depth 1 https://github.com/Telegram-FOSS-Team/Telegram-FOSS.git client
 
-      - name: Rename App to Shinygram
+      - name: Configure and Rename to Shinygram
         run: |
           cd client
-          # Меняем имя приложения в строковых ресурсах Android на Shinygram
+          # Убираем устаревший параметр памяти, ломающий сборку
+          sed -i 's/-XX:MaxPermSize=[^ ]*//g' gradle.properties || true
+          
+          # Задаем название приложения Shinygram
           find . -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
           find . -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
 
-      - name: Build Shinygram APK
+      - name: Build APK
         run: |
           cd client
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon -x lint -x test
+          ./gradlew assembleAfatDebug --no-daemon -x lint -x test
 
       - name: Upload Shinygram APK
         uses: actions/upload-artifact@v4
         with:
-          name: Shinygram-App
-          path: client/**/build/outputs/apk/**/*.apk
+          name: Shinygram-Clean-APK
+          path: client/TMessagesProj/build/outputs/apk/**/*.apk
           
