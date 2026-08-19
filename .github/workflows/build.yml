@@ -21,30 +21,36 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Clone Telegram Lite Source
+      - name: Clone Telegram Source
         run: |
           git clone --depth 1 https://github.com/DrKLO/Telegram.git client
 
-      - name: Configure App Name to Shinygram
+      - name: Inject Version Properties & Rename to Shinygram
         run: |
           cd client
-          # Увеличиваем лимиты памяти Gradle
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" > gradle.properties
-          echo "android.useAndroidX=true" >> gradle.properties
-          
-          # Меняем имя приложения на Shinygram
+          # Прописываем все недостающие параметры версии и базовые ключи
+          cat <<EOT >> gradle.properties
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m
+          android.useAndroidX=true
+          APP_VERSION_NAME=10.0.0
+          APP_VERSION_CODE=3000
+          APP_HASH=8e96683260843236e788737274092b3c
+          APP_ID=6
+          EOT
+
+          # Переименовываем приложение в Shinygram
           find TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
           find TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
 
-      - name: Build Debug APK
+      - name: Build APK
         run: |
           cd client
           chmod +x gradlew
-          ./gradlew assembleAfatDebug --no-daemon -x test -x lint
+          ./gradlew assembleAfatDebug -PAPP_VERSION_NAME=10.0.0 -PAPP_VERSION_CODE=3000 --no-daemon -x test -x lint
 
-      - name: Upload APK
+      - name: Upload Finished APK
         uses: actions/upload-artifact@v4
         with:
-          name: Shinygram-App
+          name: Shinygram-APK
           path: client/TMessagesProj/build/outputs/apk/**/*.apk
           
