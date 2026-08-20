@@ -1,4 +1,4 @@
-name: Build Shinygram Fast
+name: Build Shinygram Fast With Custom DC
 
 on:
   workflow_dispatch:
@@ -18,27 +18,33 @@ jobs:
       - name: Download Tools & Telegram
         run: |
           mkdir -p output
-          # Скачиваем официальный стабильный Apktool и Signer с GitHub
           curl -L -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar
           curl -L -o uber-apk-signer.jar https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
-          
-          # Скачиваем чистый официальный Telegram APK
           curl -L -A "Mozilla/5.0" -o clean_tg.apk https://telegram.org/dl/android/apk
 
-      - name: Process & Rename to Shinygram
+      - name: Decompile & Patch Server Address
         run: |
-          # Распаковываем ресурсы
-          java -jar apktool.jar d clean_tg.apk -o tg_source --no-src -f
-          
-          # Переименовываем во всех языковых ресурсах приложения
+          RENDER_HOST="shiny-gram.onrender.com"
+
+          # Распаковываем APK полностью со smali-кодом
+          java -jar apktool.jar d clean_tg.apk -o tg_source -f
+
+          # 1. Меняем отображаемое имя на Shinygram
           find tg_source/res -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
           find tg_source/res -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
 
-          # Собираем обратно
-          java -jar apktool.jar b tg_source -o Shinygram_unsigned.apk
+          # 2. Подменяем стандартные IP серверов Telegram на shiny-gram.onrender.com
+          find tg_source/smali* -type f -name "*.smali" -exec sed -i "s/149\.154\.167\.50/$RENDER_HOST/g" {} + || true
+          find tg_source/smali* -type f -name "*.smali" -exec sed -i "s/149\.154\.175\.100/$RENDER_HOST/g" {} + || true
+          find tg_source/smali* -type f -name "*.smali" -exec sed -i "s/149\.154\.167\.51/$RENDER_HOST/g" {} + || true
+          find tg_source/smali* -type f -name "*.smali" -exec sed -i "s/149\.154\.167\.91/$RENDER_HOST/g" {} + || true
+          find tg_source/smali* -type f -name "*.smali" -exec sed -i "s/91\.108\.56\.130/$RENDER_HOST/g" {} + || true
 
-          # Подписываем тестовым Android-ключом
-          java -jar uber-apk-signer.jar --apks Shinygram_unsigned.apk --out output
+          # 3. Собираем обратно
+          java -jar apktool.jar b tg_source -o Shinygram_patched.apk
+
+          # 4. Подписываем
+          java -jar uber-apk-signer.jar --apks Shinygram_patched.apk --out output
 
       - name: Upload Finished Shinygram APK
         uses: actions/upload-artifact@v4
