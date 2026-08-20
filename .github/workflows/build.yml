@@ -1,4 +1,4 @@
-name: Build Shinygram APK
+name: Build Shinygram Fast
 
 on:
   workflow_dispatch:
@@ -9,48 +9,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Clone Telegram Source
+      - name: Install Apktool & Signer
         run: |
-          git clone --depth 1 https://github.com/DrKLO/Telegram.git client
+          sudo apt-get update && sudo apt-get install -y aapt
+          wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool -O apktool
+          wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar -O apktool.jar
+          chmod +x apktool apktool.jar
+          sudo mv apktool apktool.jar /usr/local/bin/
+          wget -q https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar -O uber-apk-signer.jar
 
-      - name: Inject Version Properties & Rename to Shinygram
+      - name: Download Pure Telegram & Rename to Shinygram
         run: |
-          cd client
-          # Прописываем все недостающие параметры версии и базовые ключи
-          cat <<EOT >> gradle.properties
-          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m
-          android.useAndroidX=true
-          APP_VERSION_NAME=10.0.0
-          APP_VERSION_CODE=3000
-          APP_HASH=8e96683260843236e788737274092b3c
-          APP_ID=6
-          EOT
+          # Скачиваем чистый официальный клиент Telegram
+          wget -q https://telegram.org/dl/android/apk -O telegram_clean.apk
+          
+          # Распаковываем ресурсы
+          apktool d telegram_clean.apk -o tg_src -f
+          
+          # Меняем имя приложения на Shinygram во всех языковых ресурсах
+          find tg_src/res -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
+          find tg_src/res -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
 
-          # Переименовываем приложение в Shinygram
-          find TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="AppName">.*<\/string>/<string name="AppName">Shinygram<\/string>/g' {} + || true
-          find TMessagesProj/src/main/res -name "strings.xml" -exec sed -i 's/<string name="app_name">.*<\/string>/<string name="app_name">Shinygram<\/string>/g' {} + || true
+          # Запаковываем обратно
+          apktool b tg_src -o Shinygram_unsigned.apk
 
-      - name: Build APK
-        run: |
-          cd client
-          chmod +x gradlew
-          ./gradlew assembleAfatDebug -PAPP_VERSION_NAME=10.0.0 -PAPP_VERSION_CODE=3000 --no-daemon -x test -x lint
+          # Подписываем APK
+          java -jar uber-apk-signer.jar --apks Shinygram_unsigned.apk --out output
 
-      - name: Upload Finished APK
+      - name: Upload Finished Shinygram APK
         uses: actions/upload-artifact@v4
         with:
           name: Shinygram-APK
-          path: client/TMessagesProj/build/outputs/apk/**/*.apk
+          path: output/*.apk
           
